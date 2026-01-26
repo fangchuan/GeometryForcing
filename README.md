@@ -23,6 +23,7 @@ $^1$ Microsoft Research $^2$ Tsinghua University
 (c) While baseline features fail to reconstruct meaningful 3D geometry, GF-learned features enable accurate 3D reconstruction.
 
 ## 🚀 News
+- [2026/01/26] Our Paper is accepted to [ICLR 2026](https://iclr.cc/) !
 - [2025/10/8] We release the evaluation code for reprojection error and revisit error.
 - [2025/9/24] We release code and checkpoint.
 - [2025/9/22] [Geometry Forcing](https://geometryforcing.github.io/) is accepted to [NeurIPS 2025 NextVid Workshop](https://what-makes-good-video.github.io/) as an Oral!
