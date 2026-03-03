@@ -1,20 +1,22 @@
-from typing import Literal, List, Dict, Any, Callable, Tuple, Optional
-from abc import ABC, abstractmethod
+import os 
 import random
 import bisect
-from pathlib import Path
-from omegaconf import DictConfig
+from typing import Literal, List, Dict, Any, Callable, Tuple, Optional
+from abc import ABC, abstractmethod
+
 import torch
-import torch.nn.functional as F
-from torchvision.datasets.video_utils import _VideoTimestampsDataset, _collate_fn
 from tqdm import tqdm
+from pathlib import Path
+from loguru import logger
+from omegaconf import DictConfig
+import torch.nn.functional as F
 from einops import rearrange
+from torchvision.datasets.video_utils import _VideoTimestampsDataset, _collate_fn
+
 from utils.distributed_utils import rank_zero_print
 from utils.print_utils import cyan
 from datasets.video.utils import read_video, VideoTransform
-import os 
 SPLIT = Literal["training", "validation", "test"]
-
 
 class BaseVideoDataset(torch.utils.data.Dataset, ABC):
     """
@@ -49,7 +51,7 @@ class BaseVideoDataset(torch.utils.data.Dataset, ABC):
         )
         self.split_dir = self.save_dir / split
         self.metadata_dir = self.save_dir / "metadata"
-
+        logger.info(f"Dataset split directory: {self.split_dir}, metadata directory: {self.metadata_dir}")
         # Download dataset if not exists
         if self._should_download():
             self.download_dataset()
@@ -59,7 +61,7 @@ class BaseVideoDataset(torch.utils.data.Dataset, ABC):
                 self.build_metadata(split)
 
         self.metadata = self.load_metadata()
-        print(f"Loaded {len(self.metadata)} videos for {self.split} split")
+        logger.info(f"Loaded {len(self.metadata)} videos for {self.split} split")
         self.augment_dataset()
         self.transform = self.build_transform()
 
@@ -117,6 +119,7 @@ class BaseVideoDataset(torch.utils.data.Dataset, ABC):
             "video_fps": video_fps,
         }
         torch.save(metadata, self.metadata_dir / f"{split}.pt")
+        logger.info(f"Metadata for {split} split built and saved to {self.metadata_dir / f'{split}.pt'}")
 
     def subsample(
         self,

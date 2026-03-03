@@ -1,6 +1,6 @@
 numpy~=1.0
-torch
-torchvision
+# torch
+# torchvision
 wandb
 hydra-core
 pyyaml
