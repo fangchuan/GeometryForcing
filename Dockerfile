@@ -14,9 +14,7 @@ COPY requirements.txt .
 
 # Install dependencies directly into the container's optimized Python environment
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install loguru einops omegaconf pytubefix
-RUN pip insstall opencv-python-headless==4.7.0.72
-# docker exec ed1b3cd57d4f bash -c "pip uninstall opencv-python opencv-contrib-python opencv-python-headless -y && pip install opencv-python-headless==4.7.0.72 -q"
+RUN pip uninstall opencv-python opencv-contrib-python opencv-python-headless -y && pip install opencv-python-headless==4.7.0.72 -q
 
 # Copy the rest of the project files
 COPY . .
