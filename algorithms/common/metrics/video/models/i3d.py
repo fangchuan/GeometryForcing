@@ -6,7 +6,7 @@ from utils.huggingface_utils import download_from_hf
 
 def load_pretrained_i3d() -> torch.jit.ScriptModule:
     # model_path = download_from_hf("metrics_models/i3d_torchscript.pt")
-    model_path = '/data-nas/data/dataset/open_source/RealEstate10K/DFoT_processed_data/metrics_models/i3d_torchscript.pt'
+    model_path = '/mnt/nas_3dv/hdd1/datasets/RealEstate10k/DFoT/metrics_models/i3d_torchscript.pt'
     # comes from https://github.com/JunyaoHu/common_metrics_on_video_quality/raw/main/fvd/styleganv/i3d_torchscript.pt
     detector = torch.jit.load(model_path)
     detector.eval()

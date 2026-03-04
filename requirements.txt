@@ -7,7 +7,6 @@ pyyaml
 omegaconf
 colorama
 tqdm
-opencv-python
 matplotlib
 lightning
 click

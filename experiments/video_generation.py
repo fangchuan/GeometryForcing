@@ -4,7 +4,8 @@ from datasets.video import (
     RealEstate10KAdvancedVideoDataset,
     RealEstate10KMiniAdvancedVideoDataset,
     RealEstate10KOODAdvancedVideoDataset,
-    RealEstate10KRotateAdvancedVideoDataset
+    RealEstate10KRotateAdvancedVideoDataset,
+    SpatialVideoDataset,
 )
 from algorithms.dfot import DFoTVideo, DFoTVideoPose,DFoTGeometryForcing
 from .base_exp import BaseLightningExperiment
@@ -32,6 +33,7 @@ class VideoGenerationExperiment(BaseLightningExperiment):
         realestate10k_mini=RealEstate10KMiniAdvancedVideoDataset,
         realestate10k_rotate=RealEstate10KRotateAdvancedVideoDataset,
         kinetics_600=Kinetics600AdvancedVideoDataset,
+        spatialvideo=SpatialVideoDataset,
     )
 
     data_module_cls = _data_module_cls

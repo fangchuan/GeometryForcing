@@ -247,6 +247,7 @@ class BaseVideoDataset(torch.utils.data.Dataset, ABC):
         start_pts = video_pts[start_frame].item()
         end_pts = video_pts[end_frame - 1].item()
         video = read_video(video_path, start_pts, end_pts)
+
         return video.permute(0, 3, 1, 2) / 255.0
 
 
@@ -522,6 +523,7 @@ class BaseAdvancedVideoDataset(BaseVideoDataset):
         video_metadata = self.metadata[video_idx]
         video_length = self.video_length(video_metadata)
         start_frame, end_frame = clip_idx, min(clip_idx + self.n_frames, video_length)
+        start_frame, end_frame = 0, 49
 
         video, latent, cond = None, None, None
         if self.use_preprocessed_latents:
@@ -564,7 +566,7 @@ class BaseAdvancedVideoDataset(BaseVideoDataset):
             nonterminal = nonterminal[:: self.frame_skip]
         if cond is not None:
             cond = self._process_external_cond(cond)
-
+        logger.info(f"[BaseAdvancedVideoDataset] after processing, video shape: {video.shape if video is not None else None}, cond shape: {cond.shape if cond is not None else None}, nonterminal shape: {nonterminal.shape}")
         output = {
             "videos": self.transform(video) if video is not None else None,
             "latents": latent,

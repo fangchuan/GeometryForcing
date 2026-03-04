@@ -12,6 +12,8 @@ from lightning.pytorch.utilities import grad_norm
 from einops import rearrange, repeat, reduce
 from transformers import get_scheduler
 from tqdm import tqdm
+from loguru import logger
+
 from algorithms.common.base_pytorch_algo import BasePytorchAlgo
 from algorithms.common.metrics.video import VideoMetric, SharedVideoMetricModelRegistry
 from algorithms.vae import ImageVAE, VideoVAE
@@ -476,6 +478,7 @@ class DFoTVideo(BasePytorchAlgo):
                 if task == "prediction"
                 else self._interpolate_videos
             )
+            logger.info(f"[DFoTVideo:_sample_all_videos] {sample_fn.__name__} sample videos for task: {task}")
             all_videos[task] = sample_fn(xs, conditions=conditions)
         # import pdb; pdb.set_trace()
         # remove None values
@@ -523,6 +526,7 @@ class DFoTVideo(BasePytorchAlgo):
         keyframe_indices = torch.cat(
             [torch.arange(self.n_context_tokens), keyframe_indices]
         ).unique()  # context frames are always keyframes
+        logger.info(f"[DFoTVideo:_predict_videos] keyframe indices: {keyframe_indices}, n_context_tokens: {self.n_context_tokens}, density: {density}")
         key_conditions = (
             conditions[:, keyframe_indices] if conditions is not None else None
         )
@@ -1179,6 +1183,7 @@ class DFoTVideo(BasePytorchAlgo):
             if context.shape[:2] != context_mask.shape:
                 raise ValueError("context and context_mask must have the same shape.")
 
+        logger.info(f"Sampling sequence with batch size {batch_size} and length {length}. conditions: {conditions.shape}")
         if conditions is not None:
             if self.use_causal_mask and conditions.shape[1] != length:
                 raise ValueError(

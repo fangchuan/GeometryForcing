@@ -16,6 +16,7 @@ from lightning.pytorch.strategies.ddp import DDPStrategy
 import lightning.pytorch as pl
 from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
+from loguru import logger
 
 from omegaconf import DictConfig
 
@@ -70,6 +71,8 @@ class BaseExperiment(ABC):
                 "Make sure you define compatible_algorithms correctly and make sure that each key has "
                 "same name as yaml file under '[project_root]/configurations/algorithm' without .yaml suffix"
             )
+        logger.info(f"Building algorithm {algo_name} for {self.root_cfg.algorithm}")
+        logger.info(f"selected algorithm {self.compatible_algorithms[algo_name]}")
         return self.compatible_algorithms[algo_name](self.root_cfg.algorithm)
 
     def exec_task(self, task: str) -> None:
