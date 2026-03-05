@@ -5,7 +5,7 @@ checkpoint_path="checkpoints/geometry_forcing_state_dict.ckpt"
 
 algorithm="dfot_geometry_forcing"
 
-echo "Result directory: $result_dir"
+echo "Result directory: $eval_result_dir"
 echo "Checkpoint path: $checkpoint_path" 
 
 python -m main +name=single_image_to_long dataset=spatialvideo \
@@ -22,4 +22,4 @@ python -m main +name=single_image_to_long dataset=spatialvideo \
         algorithm.tasks.interpolation.history_guidance.name=vanilla \
         +algorithm.tasks.interpolation.history_guidance.guidance_scale=1.5 \
         'algorithm.logging.metrics=[fvd,fid,psnr,lpips,ssim]' \
-        hydra.run.dir=$result_dir 
+        hydra.run.dir=$eval_result_dir 

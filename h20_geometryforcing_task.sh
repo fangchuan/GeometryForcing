@@ -1,7 +1,7 @@
 arena --loglevel info submit pytorch  \
     --toleration 'all' \
     --namespace mri \
-    --name zhenqing-debug-geoforce \
+    --name zhenqing-debug-geoforce2 \
     --gpus 1 \
     --workers 1 \
     --cpu 24 \
