@@ -6,10 +6,10 @@ defaults:
 
 save_dir: data/spatialvideo
 external_cond_dim: 16
-max_frames: 49 # updated by haoyu for longer video
+max_frames: 16 # updated by haoyu for longer video
 frame_skip: 1
-context_length: 1
-resolution: 512
+context_length: 4
+resolution: 256
 data_mean: [[[0.577]], [[0.517]], [[0.461]]]
 data_std: [[[0.249]], [[0.249]], [[0.268]]]
 filter_min_len: null

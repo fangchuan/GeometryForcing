@@ -7,7 +7,7 @@
 
 dataset:
   subdataset_size: 2400000 
-  num_eval_videos: 2
+  num_eval_videos: 123
   maximize_training_data: true
   augmentation:
     frame_skip_increase: 1

@@ -1,4 +1,5 @@
 from typing import Optional, List
+import re
 import wandb
 import numpy as np
 import torch
@@ -22,6 +23,33 @@ from torchmetrics.image import (
     LearnedPerceptualImagePatchSimilarity,
     FrechetInceptionDistance,
 )
+
+
+def _safe_filename_component(value: str) -> str:
+    return re.sub(r"[^0-9A-Za-z._-]+", "_", str(value))
+
+
+def _rename_latest_wandb_video(namespace: str, desired_filename: str) -> None:
+    if wandb.run is None:
+        return
+    media_dir = Path(wandb.run.dir) / "media" / "videos" / namespace
+    if not media_dir.exists():
+        return
+    candidates = sorted(
+        media_dir.glob("*.mp4"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
+    if len(candidates) == 0:
+        return
+    src = candidates[0]
+    dst = media_dir / desired_filename
+    if src.name == dst.name:
+        return
+    try:
+        if dst.exists():
+            dst.unlink()
+        src.rename(dst)
+    except OSError:
+        return
 
 
 # FIXME: clean up & check this util
@@ -122,10 +150,15 @@ def log_video(
         caption = captions[i] if i < len(captions) else None
         logger.log(
             {
-                name: wandb.Video(video[i], fps=24, caption=caption,format="gif"),
+                # name: wandb.Video(video[i], fps=24, caption=caption,format="gif"),
+                name: wandb.Video(video[i], fps=24, caption=caption, format="mp4"),
                 "trainer/global_step": step,
             }
         )
+        if i < len(postfix):
+            safe_postfix = _safe_filename_component(postfix[i])
+            desired_filename = f"{prefix}_{i + indent}_{safe_postfix}.mp4"
+            _rename_latest_wandb_video(namespace, desired_filename)
 
 
 def get_validation_metrics_for_videos(

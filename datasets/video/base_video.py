@@ -521,6 +521,7 @@ class BaseAdvancedVideoDataset(BaseVideoDataset):
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         video_idx, clip_idx = self.get_clip_location(idx)
         video_metadata = self.metadata[video_idx]
+        scene_id = Path(video_metadata["video_paths"]).stem.split('.')[0]
         video_length = self.video_length(video_metadata)
         start_frame, end_frame = clip_idx, min(clip_idx + self.n_frames, video_length)
         start_frame, end_frame = 0, 49
@@ -572,6 +573,10 @@ class BaseAdvancedVideoDataset(BaseVideoDataset):
             "latents": latent,
             "conds": cond, # 256 16
             "nonterminal": nonterminal,
+            "sample_idx": idx,
+            "video_idx": video_idx,
+            "clip_idx": clip_idx,
+            "scene_id": scene_id,
         }
         return {key: value for key, value in output.items() if value is not None}
 

@@ -45,6 +45,7 @@ class SpatialVideoBaseDataset(BaseVideoDataset):
     _DATASET_URL = "https://huggingface.co/kiwhansong/DFoT/resolve/main/datasets/RealEstate10K.tar.gz"
     _SUPPORTED_RESOLUTIONS: Dict[int, VideoPreprocessingType] = {
         64: "npz",
+        256: "mp4",
         512: "mp4",
     }
 

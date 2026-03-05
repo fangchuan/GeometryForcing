@@ -263,7 +263,14 @@ class DFoTVideo(BasePytorchAlgo):
 
     def on_after_batch_transfer(
         self, batch: Dict, dataloader_idx: int
-    ) -> Tuple[Tensor, Optional[Tensor], Tensor, Optional[Tensor]]:
+    ) -> Tuple[
+        Tensor,
+        Optional[Tensor],
+        Tensor,
+        Optional[Tensor],
+        Optional[list[str]],
+        Optional[Tensor],
+    ]:
         """
         Preprocess the batch before training/validation.
 
@@ -294,6 +301,8 @@ class DFoTVideo(BasePytorchAlgo):
 
         # 2. Prepare external conditions
         conditions = batch.get("conds", None)
+        video_indices = batch.get("video_idx", None)
+        scene_ids = batch.get("scene_id", None)
 
         # 3. Prepare the masks
         if "masks" in batch:
@@ -303,7 +312,7 @@ class DFoTVideo(BasePytorchAlgo):
         else:
             masks = torch.ones(*xs.shape[:2]).bool().to(self.device)
 
-        return xs, conditions, masks, gt_videos
+        return xs, conditions, masks, video_indices, scene_ids, gt_videos
 
     # ---------------------------------------------------------------------
     # Training
@@ -369,9 +378,11 @@ class DFoTVideo(BasePytorchAlgo):
         if not (
             self.trainer.sanity_checking and not self.cfg.logging.sanity_generation
         ):
-            all_videos = self._sample_all_videos(batch, batch_idx, namespace)
+            all_videos, video_postfix = self._sample_all_videos(
+                batch, batch_idx, namespace
+            )
             self._update_metrics(all_videos)
-            self._log_videos(all_videos, namespace)
+            self._log_videos(all_videos, namespace, video_postfix=video_postfix)
     
     def on_validation_epoch_start(self) -> None:
         torch.cuda.empty_cache()
@@ -416,7 +427,8 @@ class DFoTVideo(BasePytorchAlgo):
 
     def _eval_denoising(self, batch, batch_idx, namespace="training") -> None:
         """Evaluate the denoising performance during training."""
-        xs, conditions, masks, gt_videos = batch
+        # xs, conditions, masks, gt_videos = batch
+        xs, conditions, masks, *_, gt_videos = batch
 
         xs = xs[:, : self.max_tokens]
         if conditions is not None:
@@ -468,8 +480,22 @@ class DFoTVideo(BasePytorchAlgo):
 
     def _sample_all_videos(
         self, batch, batch_idx, namespace="validation"
-    ) -> Optional[Dict[str, Tensor]]:
-        xs, conditions, *_, gt_videos = batch
+    # ) -> Optional[Dict[str, Tensor]]:
+    #     xs, conditions, *_, gt_videos = batch
+    ) -> Tuple[Optional[Dict[str, Tensor]], Optional[list[str]]]:
+        xs, conditions, *metadata, gt_videos = batch
+        video_indices = metadata[1] if len(metadata) >= 2 else None
+        scene_ids = metadata[2] if len(metadata) >= 3 else None
+
+        video_postfix = None
+        if isinstance(video_indices, torch.Tensor) and scene_ids is not None:
+            if isinstance(scene_ids, tuple):
+                scene_ids = list(scene_ids)
+            if isinstance(scene_ids, list) and len(scene_ids) == video_indices.shape[0]:
+                video_postfix = [
+                    f"{int(video_idx)}_{scene_id}"
+                    for video_idx, scene_id in zip(video_indices.tolist(), scene_ids)
+                ]
         all_videos: Dict[str, Tensor] = {"gt": xs}
 
         for task in self.tasks:
@@ -498,7 +524,8 @@ class DFoTVideo(BasePytorchAlgo):
                 :, : self.n_context_frames
             ]
 
-        return all_videos
+        # return all_videos
+        return all_videos, video_postfix
 
     def _predict_videos(
         self, xs: Tensor, conditions: Optional[Tensor] = None
@@ -526,10 +553,11 @@ class DFoTVideo(BasePytorchAlgo):
         keyframe_indices = torch.cat(
             [torch.arange(self.n_context_tokens), keyframe_indices]
         ).unique()  # context frames are always keyframes
-        logger.info(f"[DFoTVideo:_predict_videos] keyframe indices: {keyframe_indices}, n_context_tokens: {self.n_context_tokens}, density: {density}")
         key_conditions = (
             conditions[:, keyframe_indices] if conditions is not None else None
         )
+        logger.info(f"[DFoTVideo:_predict_videos] keyframe indices: {keyframe_indices}, n_context_tokens: {self.n_context_tokens}, density: {density}, key_conditions shape: {key_conditions.shape if key_conditions is not None else None}")
+        
         # import pdb; pdb.set_trace()
         # 1. Predict the keyframes
         xs_pred_key, *_ = self._predict_sequence(
@@ -761,7 +789,13 @@ class DFoTVideo(BasePytorchAlgo):
                 context_mask = context_mask[: self.logging.n_metrics_frames]
             metric(videos, gt_videos, context_mask=context_mask)
 
-    def _log_videos(self, all_videos: Dict[str, Tensor], namespace: str) -> None:
+    # def _log_videos(self, all_videos: Dict[str, Tensor], namespace: str) -> None:
+    def _log_videos(
+        self,
+        all_videos: Dict[str, Tensor],
+        namespace: str,
+        video_postfix: Optional[list[str]] = None,
+    ) -> None:
         """Log videos during validation/test step."""
         all_videos = self.gather_data(all_videos)
         batch_size, n_frames = all_videos["gt"].shape[:2]
@@ -778,6 +812,9 @@ class DFoTVideo(BasePytorchAlgo):
             batch_size,
         )
         cut_videos = lambda x: x[:num_videos_to_log]
+        cut_postfix = (
+            video_postfix[:num_videos_to_log] if video_postfix is not None else []
+        )
 
         for task in self.tasks:
             log_video(
@@ -788,6 +825,7 @@ class DFoTVideo(BasePytorchAlgo):
                 logger=self.logger.experiment,
                 indent=self.num_logged_videos,
                 raw_dir=self.logging.raw_dir,
+                postfix=cut_postfix,
                 context_frames=(
                     self.n_context_frames
                     if task == "prediction"
@@ -1038,7 +1076,7 @@ class DFoTVideo(BasePytorchAlgo):
             )
 
         chunk_size = self.chunk_size if self.use_causal_mask else self.max_tokens
-
+        logger.info(f"[DFoTVideo:_predict_sequence] length: {length}, sliding_context_len: {sliding_context_len}, chunk_size: {chunk_size}, gt_len: {gt_len}")
         curr_token = gt_len
         xs_pred = context
         x_shape = self.x_shape
@@ -1083,6 +1121,22 @@ class DFoTVideo(BasePytorchAlgo):
             cond_slice = None
             if conditions is not None:
                 cond_slice = conditions[:, curr_token - c : curr_token - c + cond_len]
+                # if not self.use_causal_mask and cond_slice.shape[1] < self.max_tokens:
+                #     if cond_slice.shape[1] == 0:
+                #         raise ValueError(
+                #             "for noncausal models, condition slice cannot be empty when sampling."
+                #         )
+                #     cond_slice = torch.cat(
+                #         [
+                #             cond_slice,
+                #             repeat(
+                #                 cond_slice[:, -1:],
+                #                 "b 1 ... -> b t ...",
+                #                 t=self.max_tokens - cond_slice.shape[1],
+                #             ),
+                #         ],
+                #         dim=1,
+                #     )
             # import pdb; pdb.set_trace()   
             new_pred, record = self._sample_sequence(
                 batch_size,
@@ -1183,7 +1237,10 @@ class DFoTVideo(BasePytorchAlgo):
             if context.shape[:2] != context_mask.shape:
                 raise ValueError("context and context_mask must have the same shape.")
 
-        logger.info(f"Sampling sequence with batch size {batch_size} and length {length}. conditions: {conditions.shape}")
+        logger.info(
+            f"Sampling sequence with batch size {batch_size} and length {length}. "
+            f"conditions: {conditions.shape if conditions is not None else None}"
+        )
         if conditions is not None:
             if self.use_causal_mask and conditions.shape[1] != length:
                 raise ValueError(
