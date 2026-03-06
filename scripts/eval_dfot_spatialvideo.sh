@@ -1,9 +1,9 @@
 echo "Running evaluation for DFoT on SpatialVideo dataset"
 output_dir="test_results/spatialvideo"
-eval_result_dir="$output_dir/geometry_forcing_long"
-checkpoint_path="checkpoints/geometry_forcing_state_dict.ckpt"
+eval_result_dir="$output_dir/dfot_video_pose"
+checkpoint_path="checkpoints/DFoT_16f_state_dict.ckpt"
 
-algorithm="dfot_geometry_forcing"
+algorithm="dfot_video_pose"
 
 echo "Result directory: $eval_result_dir"
 echo "Checkpoint path: $checkpoint_path" 

@@ -2,23 +2,26 @@
 """
 Video Evaluation Script for DFOT-VGGT using Reprojection Error Metrics
 """
-
-import argparse
-import json
 import os
-import re
 import sys
+sys.path.append(".")
+sys.path.append("..")
+import re
+import json
+import glob
+import argparse
 import tempfile
+from ast import pattern
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import imageio.v3 as iio
-import numpy as np
 import torch
-
-from revisit_error import img_psnr, calculate_ssim_function, img_lpips_loss_fn
-from torch_fidelity import calculate_metrics
+import numpy as np
+import imageio.v3 as iio
 from torchvision.utils import save_image
+from torch_fidelity import calculate_metrics
+
+from evaluation.revisit_error import img_psnr, calculate_ssim_function, img_lpips_loss_fn
 
 def split_gif_to_videos(gif_path: str) -> Tuple[torch.Tensor, torch.Tensor]:
     """Split a side-by-side GIF into generated and ground truth video tensors."""
@@ -259,11 +262,15 @@ def parse_latest_checkpoint_val_video(gif_files: List[Path]) -> List[Path]:
     # Dictionary to store video_number -> (max_log_number, file_path)
     latest_videos = {}
     
-    # Pattern to match video naming: video_{video_num}_{log_num}_{hash}.gif
-    pattern = r'video_(\d+)_(\d+)_([a-f0-9]+)\.gif'
+    # Pattern to match video naming: video_{video_num}_{log_num}_{hash}.mp4
+    pattern = r'video_(\d+)_(\d+)_([a-f0-9]+)\.mp4'
     
     for gif_file in gif_files:
+        # gif_file = Path(gif_file)
         filename = gif_file.name
+        # video_num = filename.split('_')[1]  # video number is the second part
+        # log_num = filename.split('_')[2]    # log number is the third part
+        
         match = re.match(pattern, filename)
         
         if match:
@@ -292,37 +299,44 @@ def parse_latest_checkpoint_val_video(gif_files: List[Path]) -> List[Path]:
 
 def main():
     parser = argparse.ArgumentParser(description='Evaluate video quality from GIF predictions')
-    parser.add_argument('--gif_dir', type=str, default=None, help='Directory containing GIF files')
+    parser.add_argument('--predictions_dir', type=str, default=None, help='Directory containing GIF files')
     parser.add_argument('--output_dir', type=str, default='./video_evaluation_results',
                        help='Output directory for results')
     parser.add_argument('--temp_dir', type=str, default=None,
                        help='Temporary directory for video files (optional)')
     parser.add_argument('--max_files', type=int, default=None,
                        help='Maximum number of GIF files to process')
-    parser.add_argument('--pattern', type=str, default='*.gif',
+    parser.add_argument('--pattern', type=str, default='*.mp4',
                        help='File pattern to match GIF files')
     
     args = parser.parse_args()
     
-    # Create output directories
-    os.makedirs(args.output_dir, exist_ok=True)
-    if args.temp_dir:
-        os.makedirs(args.temp_dir, exist_ok=True)
+    prediction_dir = args.predictions_dir
+    output_dir = args.output_dir
+    temp_dir = args.temp_dir
+    video_pattern = args.pattern
     
-    # Find GIF files
-    gif_files = list(Path(args.gif_dir).glob(args.pattern))
-    gif_files = parse_latest_checkpoint_val_video(gif_files)
+    # Create output directories
+    os.makedirs(output_dir, exist_ok=True)
+    if temp_dir:
+        os.makedirs(temp_dir, exist_ok=True)
+    
+    # Find MP4 files
+    # pred_video_files = list(glob.glob(os.path.join(prediction_dir, video_pattern)))
+    pred_video_files = list(Path(prediction_dir).glob(video_pattern))
+    print(f"Found {len(pred_video_files)} video files matching pattern '{video_pattern}' in '{prediction_dir}'")
+    # pred_video_files = parse_latest_checkpoint_val_video(pred_video_files)
     
     
     if args.max_files:
-        gif_files = gif_files[:args.max_files]
+        pred_video_files = pred_video_files[:args.max_files]
     
-    print(f"Found {len(gif_files)} GIF files to process")
+    print(f"Found {len(pred_video_files)} MP4 files to process")
     
     # Process files
     results = []
-    for gif_path in gif_files:
-        result = process_single_gif(str(gif_path), args.output_dir, args.temp_dir)
+    for video_path in pred_video_files:
+        result = process_single_gif(str(video_path), output_dir, temp_dir)
         results.append(result)
     
     # Calculate aggregate metrics
@@ -333,7 +347,7 @@ def main():
         'individual_results': results,
         'aggregate_metrics': aggregate_metrics,
         'summary': {
-            'total_files': len(gif_files),
+            'total_files': len(pred_video_files),
             'successful_files': len([r for r in results if 'metrics' in r and r['metrics']]),
             'failed_files': len([r for r in results if 'error' in r or not r.get('metrics')])
         },
@@ -342,7 +356,7 @@ def main():
     
     # Save results
     detailed_results = convert_numpy_types(detailed_results)
-    output_file = os.path.join(args.output_dir, 'video_evaluation_results.json')
+    output_file = os.path.join(output_dir, 'video_evaluation_results.json')
     with open(output_file, 'w') as f:
         json.dump(detailed_results, f, indent=2)
     
@@ -350,7 +364,7 @@ def main():
     print("=" * 60)
     print("EVALUATION SUMMARY")
     print("=" * 60)
-    print(f"Total files: {len(gif_files)}")
+    print(f"Total files: {len(pred_video_files)}")
     print(f"Successful: {detailed_results['summary']['successful_files']}")
     print(f"Failed: {detailed_results['summary']['failed_files']}")
     
@@ -362,8 +376,8 @@ def main():
                 print(f"{metric}: {value:.4f}")
     
     print(f"\nResults saved to: {output_file}")
-    if args.temp_dir:
-        print(f"Video files saved to: {args.temp_dir}")
+    if temp_dir:
+        print(f"Video files saved to: {temp_dir}")
 
 
 if __name__ == "__main__":

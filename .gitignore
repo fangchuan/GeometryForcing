@@ -173,3 +173,6 @@ data
 
 # huggingface
 huggingface/
+
+# pycache
+*/__pycache__/

@@ -14,8 +14,8 @@ python -m main +name=single_image_to_long dataset=realestate10k \
         @diffusion/continuous \
         load=$checkpoint_path \
         'experiment.tasks=[validation]' experiment.validation.data.shuffle=False experiment.test.data.shuffle=False \
-        dataset.context_length=1 dataset.frame_skip=1 dataset.n_frames=256 \
-        algorithm.tasks.prediction.keyframe_density=0.0625 \
+        dataset.context_length=1 dataset.frame_skip=1 dataset.n_frames=49 \
+        algorithm.tasks.prediction.keyframe_density=0.327 \
         algorithm.tasks.interpolation.max_batch_size=4 experiment.validation.batch_size=1 \
         algorithm.tasks.prediction.history_guidance.name=stabilized_vanilla \
         +algorithm.tasks.prediction.history_guidance.guidance_scale=4.0 \

@@ -193,7 +193,7 @@ class BaseVideoDataset(torch.utils.data.Dataset, ABC):
         Load metadata from metadata_dir
         """
         metadata = torch.load(
-            self.metadata_dir / f"{self.split}.pt", weights_only=False
+            self.metadata_dir / f"{self.split}_137.pt", weights_only=False
         )
         return [
             {key: metadata[key][i] for key in metadata.keys()}
@@ -524,7 +524,8 @@ class BaseAdvancedVideoDataset(BaseVideoDataset):
         scene_id = Path(video_metadata["video_paths"]).stem.split('.')[0]
         video_length = self.video_length(video_metadata)
         start_frame, end_frame = clip_idx, min(clip_idx + self.n_frames, video_length)
-        start_frame, end_frame = 0, 49
+        # ONLY FOR DEBUGGING SpatialVideo dataset with very short videos, IGNORE OTHERWISE
+        start_frame, end_frame = 0, 81   
 
         video, latent, cond = None, None, None
         if self.use_preprocessed_latents:
